@@ -11,7 +11,7 @@ from fastapi.responses import FileResponse
 
 app = FastAPI(title="University T&P Document Upload")
 
-AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
+AWS_REGION = os.getenv("REGION", "us-east-1")
 S3_BUCKET = os.getenv("STUDENT_UPLOAD_BUCKET", "students-s33")
 
 s3 = boto3.client("s3", region_name=AWS_REGION)
