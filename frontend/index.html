@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Student Document Upload</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 650px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f4f6f9;
+        }
+
+        .container {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px #ddd;
+        }
+
+        input,
+        button {
+            box-sizing: border-box;
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+        }
+
+        input {
+            border: 1px solid #ccc;
+            border-radius: 6px;
+        }
+
+        button {
+            background: #2457c5;
+            color: white;
+            border: 0;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        button:disabled {
+            background: #888;
+            cursor: not-allowed;
+        }
+
+        #status {
+            overflow-wrap: anywhere;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h2>Student Information Upload</h2>
+        <p>Upload your student profile to the university system.</p>
+
+        <form id="uploadForm">
+
+            <label for="email">University Email</label>
+            <input type="email" id="email" name="email" placeholder="yourname@rknec.edu"
+                pattern="[A-Za-z0-9._%+-]+@rknec\.edu" title="Use your university email ending in @rknec.edu" required>
+
+            <label for="file">Select student document</label>
+            <input type="file" id="file" name="file" accept=".pdf,.txt,.csv,.docx" required>
+
+            <small>Supported formats: PDF, TXT, CSV and DOCX. Maximum size: 15 MB.</small>
+
+            <button type="submit" id="submitBtn">
+                Upload Document
+            </button>
+        </form>
+
+        <p id="status" role="status"></p>
+    </div>
+
+    <script>
+        document.getElementById("uploadForm")
+            .addEventListener("submit", async function (event) {
+                event.preventDefault();
+
+                const status = document.getElementById("status");
+                const button = document.getElementById("submitBtn");
+                const email = document.getElementById("email").value.trim();
+
+                if (!/^[A-Z0-9._%+-]+@rknec\.edu$/i.test(email)) {
+                    status.textContent =
+                        "Error: Please enter a valid @rknec.edu email address.";
+                    return;
+                }
+
+                button.disabled = true;
+                status.textContent = "Uploading your document to AWS S3...";
+
+                try {
+                    const formData = new FormData(this);
+
+                    const response = await fetch("/api/upload", {
+                        method: "POST",
+                        body: formData
+                    });
+
+                    const result = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(result.detail || "Upload failed");
+                    }
+
+                    status.textContent =
+                        "Upload successful!\n" +
+                        "University email: " + result.email +
+                        "\nS3 key: " + result.s3_key +
+                        "\nYour document has been stored in AWS S3.";
+
+                    this.reset();
+
+                } catch (error) {
+                    status.textContent = "Error: " + error.message;
+                } finally {
+                    button.disabled = false;
+                }
+            });
+    </script>
+</body>
+
+</html>
