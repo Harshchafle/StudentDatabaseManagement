@@ -34,7 +34,7 @@ CONTENT_TYPES = {
 
 @app.get("/")
 def home():
-    return FileResponse(BASE_DIR / "index.html")
+    return FileResponse(r"D:/CloudComputingLab/CC_Project/frontend/index.html")
 
 
 @app.post("/api/upload")
