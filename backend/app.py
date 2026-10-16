@@ -3,7 +3,6 @@ import os
 import re
 import uuid
 from pathlib import Path
-from urllib.parse import quote
 
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError
@@ -32,7 +31,7 @@ app.add_middleware(
 s3 = boto3.client("s3", region_name=AWS_REGION)
 
 ALLOWED_EXTENSIONS = {".pdf", ".txt", ".csv", ".docx"}
-MAX_SIZE = 15 * 1024 * 1024  # 15 MB
+MAX_SIZE = 15 * 1024 * 1024
 
 CONTENT_TYPES = {
     ".pdf": "application/pdf",
@@ -104,13 +103,13 @@ async def upload_file(
             Key=object_key,
             Body=content,
             ContentType=CONTENT_TYPES[extension],
-            ServerSideEncryption="AES256"
+            ServerSideEncryption="AES256",
         )
     except (BotoCoreError, ClientError) as exc:
         print(f"S3 upload failed: {exc}")
         raise HTTPException(
             status_code=502,
-            detail="Upload to storage failed. Check the backend IAM role and S3 configuration."
+            detail="S3 upload failed. Check the backend IAM role, bucket name and region."
         ) from exc
 
     return {
@@ -118,5 +117,5 @@ async def upload_file(
         "email": email,
         "filename": filename,
         "s3_bucket": S3_BUCKET,
-        "s3_key": object_key
+        "s3_key": object_key,
     }

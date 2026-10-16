@@ -61,70 +61,115 @@
         <p>Upload your student profile to the university system.</p>
 
         <form id="uploadForm">
-
             <label for="email">University Email</label>
-            <input type="email" id="email" name="email" placeholder="yourname@rknec.edu"
-                pattern="[A-Za-z0-9._%+-]+@rknec\.edu" title="Use your university email ending in @rknec.edu" required>
+            <input type="email" id="email" name="email" placeholder="yourname@rknec.edu" required>
 
             <label for="file">Select student document</label>
             <input type="file" id="file" name="file" accept=".pdf,.txt,.csv,.docx" required>
 
-            <small>Supported formats: PDF, TXT, CSV and DOCX. Maximum size: 15 MB.</small>
+            <small>
+                Supported formats: PDF, TXT, CSV and DOCX.
+                Maximum size: 15 MB.
+            </small>
 
-            <button type="submit" id="submitBtn">
-                Upload Document
-            </button>
+            <button type="submit" id="submitBtn">Upload Document</button>
         </form>
 
-        <p id="status" role="status"></p>
+        <p id="status" role="status" aria-live="polite"></p>
     </div>
 
     <script>
-        document.getElementById("uploadForm")
-            .addEventListener("submit", async function (event) {
-                event.preventDefault();
+        // Replace this with the CURRENT Elastic Beanstalk environment URL.
+        const API_BASE_URL =
+            "http://studentdatabasemanagement-env-1.eba-p3uy2ffq.us-east-1.elasticbeanstalk.com/api";
 
-                const status = document.getElementById("status");
-                const button = document.getElementById("submitBtn");
-                const email = document.getElementById("email").value.trim();
+        const form = document.getElementById("uploadForm");
+        const status = document.getElementById("status");
+        const button = document.getElementById("submitBtn");
+        const emailInput = document.getElementById("email");
+        const fileInput = document.getElementById("file");
 
-                if (!/^[A-Z0-9._%+-]+@rknec\.edu$/i.test(email)) {
-                    status.textContent =
-                        "Error: Please enter a valid @rknec.edu email address.";
-                    return;
-                }
+        form.addEventListener("submit", async function (event) {
+            event.preventDefault();
 
-                button.disabled = true;
-                status.textContent = "Uploading your document to AWS S3...";
+            const email = emailInput.value.trim().toLowerCase();
+            const file = fileInput.files[0];
 
-                try {
-                    const formData = new FormData(this);
+            if (!/^[a-z0-9._%+-]+@rknec\.edu$/i.test(email)) {
+                status.textContent =
+                    "Error: Please use a valid @rknec.edu email address.";
+                return;
+            }
 
-                    const response = await fetch("/api/upload", {
+            if (!file) {
+                status.textContent = "Error: Please select a document.";
+                return;
+            }
+
+            const allowedExtensions = [".pdf", ".txt", ".csv", ".docx"];
+            const filename = file.name.toLowerCase();
+            const allowed = allowedExtensions.some(ext => filename.endsWith(ext));
+
+            if (!allowed) {
+                status.textContent =
+                    "Error: Allowed formats are PDF, TXT, CSV and DOCX.";
+                return;
+            }
+
+            if (file.size > 15 * 1024 * 1024) {
+                status.textContent = "Error: Maximum file size is 15 MB.";
+                return;
+            }
+
+            button.disabled = true;
+            status.textContent = "Uploading document to AWS S3...";
+
+            try {
+                const formData = new FormData();
+                formData.append("email", email);
+                formData.append("file", file);
+
+                const response = await fetch(
+                    `${API_BASE_URL}/api/upload`,
+                    {
                         method: "POST",
                         body: formData
-                    });
-
-                    const result = await response.json();
-
-                    if (!response.ok) {
-                        throw new Error(result.detail || "Upload failed");
                     }
+                );
 
-                    status.textContent =
-                        "Upload successful!\n" +
-                        "University email: " + result.email +
-                        "\nS3 key: " + result.s3_key +
-                        "\nYour document has been stored in AWS S3.";
+                const responseText = await response.text();
+                let result;
 
-                    this.reset();
-
-                } catch (error) {
-                    status.textContent = "Error: " + error.message;
-                } finally {
-                    button.disabled = false;
+                try {
+                    result = JSON.parse(responseText);
+                } catch {
+                    throw new Error(
+                        `Backend returned a non-JSON response (HTTP ${response.status}). ` +
+                        "Check the backend URL and deployment logs."
+                    );
                 }
-            });
+
+                if (!response.ok) {
+                    throw new Error(
+                        result.detail || `Upload failed (HTTP ${response.status}).`
+                    );
+                }
+
+                status.textContent =
+                    "Upload successful!\n" +
+                    "University email: " + result.email + "\n" +
+                    "S3 bucket: " + result.s3_bucket + "\n" +
+                    "S3 key: " + result.s3_key;
+
+                form.reset();
+
+            } catch (error) {
+                status.textContent =
+                    "Error: " + error.message;
+            } finally {
+                button.disabled = false;
+            }
+        });
     </script>
 </body>
 
